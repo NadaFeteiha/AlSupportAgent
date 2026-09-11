@@ -1,0 +1,20 @@
+# OS / IDE
+.DS_Store
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.python-version
+
+# uv
+uv.lock
+
+# Course PDF (not project source)
+aws.pdf
+
+# AWS / AgentCore local config & secrets
+.bedrock_agentcore.yaml
+.env
+*.pem

@@ -32,9 +32,11 @@ from strands.hooks import (
 )
 import logging
 import uuid
-from typing import Dict
+from typing import Dict, Optional
 from bedrock_agentcore.tools.code_interpreter_client import code_session
 from strands_tools.browser import AgentCoreBrowser
+from strands.agent.conversation_manager import SummarizingConversationManager
+from pydantic import BaseModel, ValidationError
 
 
 logging.basicConfig(level=logging.WARNING)
@@ -285,6 +287,18 @@ def search_knowledge_base(query: str) -> str:
     return "\n---\n".join(chunks)
 
 
+class DiscountResult(BaseModel):
+    """Validated shape for what calculate_loyalty_discount hands back to the agent."""
+
+    points_redeemed: int
+    tier_discount_pct: float
+    final_total: float
+    total_savings: float
+    points_earned: int
+    remaining_points: int
+    note: Optional[str] = None
+
+
 # ── TODO 7 — Loyalty Discount Tool (Code Interpreter) ────────────────────────
 # Implement calculate_loyalty_discount() using the @tool decorator.
 #
@@ -377,27 +391,42 @@ print(json.dumps(result))
                 {"code": code, "language": "python", "clearContext": True},
             )
 
+        raw_result = None
         for event in response.get("stream", []):
             if "result" in event:
-                return json.dumps(event["result"])
+                raw_result = event["result"]
+                break
 
-        raise RuntimeError("Code Interpreter returned no result event")
+        if raw_result is None:
+            raise RuntimeError("Code Interpreter returned no result event")
+
+        stdout = raw_result.get("structuredContent", {}).get("stdout", "")
+        parsed = json.loads(stdout)
+        validated = DiscountResult(**parsed)
+        return validated.model_dump_json()
+
+    except (ValidationError, json.JSONDecodeError) as e:
+        # The code ran but didn't produce the shape we expect - that's a bug
+        # in the generated code string, not a Code Interpreter outage, so it
+        # gets its own log line instead of silently falling back.
+        logger.error("Code Interpreter result failed validation: %s", e)
+        raise
 
     except Exception as e:
         logger.warning("Code Interpreter unavailable, falling back to tier-only discount: %s", e)
         tier_rates = {"Silver": 0.00, "Gold": 0.10, "Platinum": 0.15}
         tier_discount_pct = tier_rates.get(tier, 0.0)
         final_total = round(order_total * (1 - tier_discount_pct), 2)
-        fallback_result = {
-            "points_redeemed": 0,
-            "tier_discount_pct": tier_discount_pct,
-            "final_total": final_total,
-            "total_savings": round(order_total - final_total, 2),
-            "points_earned": 0,
-            "remaining_points": loyalty_points,
-            "note": "Fallback calculation: Code Interpreter unavailable, tier discount only.",
-        }
-        return json.dumps(fallback_result)
+        fallback = DiscountResult(
+            points_redeemed=0,
+            tier_discount_pct=tier_discount_pct,
+            final_total=final_total,
+            total_savings=round(order_total - final_total, 2),
+            points_earned=0,
+            remaining_points=loyalty_points,
+            note="Fallback calculation: Code Interpreter unavailable, tier discount only.",
+        )
+        return fallback.model_dump_json()
 
 
 # ── TODO 8 — Agent Entrypoint ─────────────────────────────────────────────────
@@ -461,11 +490,20 @@ async def invoke(payload, context=None):
             gateway_tools = gateway_client.list_tools_sync()
             tools.extend(gateway_tools)
 
+            # A single request can chain a lot of tool calls (browser
+            # init_session/navigate/evaluate, retries, etc.), and that message
+            # list can get long. Summarizing older turns instead of just
+            # trimming them keeps the important context without blowing up
+            # the token budget on every model call.
             agent = Agent(
                 model=model,
                 tools=tools,
                 hooks=[memory_hook],
                 system_prompt=system_prompt,
+                conversation_manager=SummarizingConversationManager(
+                    preserve_recent_messages=8,
+                    proactive_compression=True,
+                ),
             )
 
             result = await agent.invoke_async(user_input)

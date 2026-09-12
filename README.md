@@ -36,6 +36,28 @@ Test results (real command + real output for all 6 scenarios): [`test_logs/test_
 
 Reflection: [`REFLECTION.md`](REFLECTION.md)
 
+## Extra stuff beyond the base requirements
+
+The project suggests a few optional additions to go further. I did two of them:
+
+- **Structured output validation.** `calculate_loyalty_discount` now returns
+  results validated against a Pydantic model (`DiscountResult`) with all the
+  required fields (`points_redeemed`, `tier_discount_pct`, `final_total`,
+  `remaining_points`, plus `total_savings`/`points_earned`/`note`). This also
+  fixed a bug I found while doing it — the tool used to return the Code
+  Interpreter's raw response wrapper instead of the actual numbers.
+- **Conversation summarization.** The agent now uses Strands'
+  `SummarizingConversationManager` so that if a single request chains a lot of
+  tool calls (the browser tool especially can take several steps), older
+  messages get summarized instead of just dropped or blindly kept, which
+  keeps token usage under control.
+
+I skipped the third suggestion (swapping the whole scenario to a different
+domain like healthcare or tutoring) — the 6 required test scenarios are
+specifically written around this e-commerce setup, and I didn't want to risk
+breaking something that's already deployed and verified just to demonstrate
+the same architecture with different tool names.
+
 ## Project structure
 
 ```

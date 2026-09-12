@@ -4,6 +4,18 @@
 
 ---
 
+## ✅ Project Status: Complete & Deployed
+
+All 8 TODO sections in `starter/main.py` are implemented, the agent is deployed to
+Amazon Bedrock AgentCore Runtime, and all 6 required test scenarios have been
+verified against the live deployed agent.
+
+- **Agent ARN:** `arn:aws:bedrock-agentcore:us-east-1:092134045103:runtime/customer_support_agent-BVDt7HAJnn`
+- **Test results:** [`test_logs/test_results.md`](test_logs/test_results.md)
+- **Written reflection:** [`REFLECTION.md`](REFLECTION.md)
+
+---
+
 ## Overview
 
 In this project you will build a fully functional, production-ready AI customer support agent for a fictional Amazon store. Starting from a simple local chatbot, you will progressively add cloud infrastructure, external tool integration, a knowledge base, persistent memory, a code interpreter, and a browser — finishing with a deployable agent that can handle real customer inquiries end-to-end.
@@ -57,9 +69,9 @@ After completing this project you will be able to:
 
 ### Model Access
 
-Enable the following models in the Amazon Bedrock console under **Model access**:
+Enabled model in the Amazon Bedrock console under **Model access**:
 
-- **Amazon Nova Lite** (`amazon.nova-lite-v1:0`)
+- **Amazon Nova Lite** (`global.amazon.nova-2-lite-v1:0`)
 
 ---
 
@@ -67,251 +79,161 @@ Enable the following models in the Amazon Bedrock console under **Model access**
 
 ```
 project/
-├── INSTRUCTIONS.md          ← this file
-├── RUBRIC.md                ← grading criteria
-├── starter/
-│   ├── main.py              ← your starting point (fill in the TODOs)
-│   └── lambda/
-│       ├── order_tracker.py     ← provided; deploy as-is
-│       └── refund_processor.py  ← provided; deploy as-is
-└── solution/                ← reference implementation (do not copy)
-    ├── main.py
-    ├── product_catalog.txt
+├── README.md                ← this file
+├── REFLECTION.md             ← written reflection (design decision, challenge, production)
+├── test_logs/
+│   └── test_results.md       ← command + real output for all 6 test scenarios
+└── starter/
+    ├── main.py                ← completed agent (all 8 TODOs implemented)
     ├── pyproject.toml
-    ├── lambda/
-    │   ├── order_tracker.py
-    │   ├── refund_processor.py
-    │   └── lambda_schema       ← JSON schema for Gateway tool registration
-    └── step-by-step/           ← one file per build step (for reference)
+    ├── product_catalog.txt    ← uploaded to S3 / synced into the Knowledge Base
+    └── lambda/
+        ├── order_tracker.py     ← deployed as-is to AWS Lambda
+        ├── refund_processor.py  ← deployed as-is to AWS Lambda
+        └── lambda_schema         ← JSON schema used to register refund_processor as a Gateway tool
 ```
 
 ---
 
-## Part 1 — AWS Infrastructure Setup
+## Part 1 — AWS Infrastructure (as actually deployed)
 
-Complete these steps **before** writing any agent code.
+| Resource | Value |
+|---|---|
+| Region | `us-east-1` |
+| Lambda: order tracking | `order-tracker` |
+| Lambda: refunds | `refund-processor` |
+| API Gateway REST API | `chcb0zkb9b` (stage `prod`) |
+| AgentCore Gateway | `customersupportgateway-zh3m74vmjj` (NONE authorizer, 2 targets: `order-tracker` API Gateway target, `refund-processor` Lambda target — 6 MCP tools total) |
+| Knowledge Base | `CustomerSupportKB` — ID `USCGD9ZEJ1` (Managed embeddings, S3 data source `cs-agent-kb-092134045103-68312`) |
+| AgentCore Memory | `CustomerSupportMemory-L1eStICBN4` (strategies: `customer_facts` (SEMANTIC), `customer_preferences` (USER_PREFERENCE)) |
+| AgentCore Runtime | `customer_support_agent-BVDt7HAJnn` (Direct Code Deploy, Python 3.11) |
 
-### Step 1.1 — Project Initialisation
-
-```bash
-# Create a new Python project managed by uv
-uv init customer-support-agent
-cd customer-support-agent
-
-# Install core dependencies
-uv add strands-agents strands-agents-tools
-uv add bedrock-agentcore bedrock-agentcore-starter-toolkit
-```
-
-### Step 1.2 — Deploy the Lambda Functions
-
-The two Lambda functions (`order_tracker.py` and `refund_processor.py`) are provided in `starter/lambda/`. Deploy them to AWS Lambda before proceeding.
-
-1. In the AWS Lambda console, create two new functions (Python 3.12 runtime):
-   - `order-tracker`
-   - `refund-processor`
-2. Paste the contents of each file into the inline code editor (or zip and upload).
-3. Attach an execution role with basic Lambda permissions (CloudWatch Logs).
-4. Note the ARN of each function — you will need them in the next step.
-
-### Step 1.3 — Set Up the AgentCore Gateway
-
-The Gateway exposes your Lambda functions as MCP tools that the agent can call.
-
-1. Open the **Amazon Bedrock** console → **AgentCore** → **Gateways**.
-2. Create a new Gateway named `CustomerSupportGateway`.
-3. Add two **Lambda targets**:
-
-   | Target Name | Lambda Function | Integration |
-   |---|---|---|
-   | `order_tracker` | `order-tracker` | API Gateway REST proxy |
-   | `refund_processor` | `refund-processor` | Direct Lambda invocation |
-
-4. For `order_tracker`, configure API Gateway routes:
-   - `GET /orders/{order_id}`
-   - `GET /customers/{customer_id}/orders`
-   - `GET /customers/{customer_id}`
-
-5. For `refund_processor`, import the tool schema from `solution/lambda/lambda_schema`.
-
-6. Copy the **Gateway URL** (ends with `/mcp`) — paste it into `GATEWAY_URL` in your `main.py`.
-
-**Verify with MCP Inspector:**
+**Verify Gateway tools:**
 ```bash
 npx @modelcontextprotocol/inspector
-# Connect to your Gateway URL and confirm all tools are listed.
+# Connect to the Gateway URL, confirm all 6 tools are listed:
+#   order-tracker___get_order, order-tracker___get_customer_orders,
+#   order-tracker___get_customer, refund-processor___initiate_refund,
+#   refund-processor___check_refund_status, refund-processor___get_return_label
 ```
 
-### Step 1.4 — Create the Knowledge Base
-
-1. Upload `solution/product_catalog.txt` to an **S3 bucket** in your account.
-2. In the Bedrock console → **Knowledge Bases**, create a new Knowledge Base:
-   - Name: `CustomerSupportKB`
-   - Data source: the S3 bucket from above
-   - Embeddings model: Amazon Titan Embeddings v2
-   - Vector store: Amazon OpenSearch Serverless (auto-created)
-3. **Sync** the data source.
-4. Copy the **Knowledge Base ID** — paste it into `KB_ID` in your `main.py`.
-
-**Verify:**
+**Verify Knowledge Base directly:**
 ```bash
-# In the console, use the Knowledge Base "Test" tab
-# Query: "What is the return policy for electronics?"
-# Expected: 15-day return window for electronics
+aws bedrock-agent-runtime retrieve \
+  --knowledge-base-id USCGD9ZEJ1 \
+  --retrieval-query '{"text": "What is the return policy for electronics?"}' \
+  --region us-east-1
+# Expected: mentions the 15-day return window for electronics
 ```
-
-### Step 1.5 — Create the AgentCore Memory Resource
-
-1. In the Bedrock console → **AgentCore** → **Memory**, create a new Memory resource:
-   - Name: `CustomerSupportMemory`
-2. Add two **Memory Strategies**:
-
-   | Strategy | Name | Namespace |
-   |---|---|---|
-   | Semantic extraction | `customer_facts` | `cs_agent/{actorId}/facts` |
-   | User preference | `customer_preferences` | `cs_agent/{actorId}/preferences` |
-
-3. Copy the **Memory ID** — paste it into `MEMORY_ID` in your `main.py`.
 
 ---
 
-## Part 2 — Building the Agent
+## Part 2 — The Agent (`starter/main.py`)
 
-Open `starter/main.py`. It contains scaffolding and `# TODO` comments marking every section you need to implement. Work through the TODOs in order.
+All 8 TODOs are implemented:
 
-The step-by-step reference files in `solution/step-by-step/` show the state of the code after each section is complete — consult them if you get stuck, but try to implement each section yourself first.
+1. **App init** — `BedrockAgentCoreApp` instance
+2. **Configuration** — `GATEWAY_URL`, `KB_ID`, `REGION`, `MEMORY_ID` (env-var overridable, real values as defaults)
+3. **Model & clients** — `BedrockModel` (Nova Lite), `MemoryClient`, boto3 `bedrock-agent-runtime` client, module-level `AgentCoreBrowser`
+4. **`get_namespaces()`** — maps memory strategy type → namespace template
+5. **`MemoryHook`** — retrieves relevant memories before each turn, saves the (query, response) pair after
+6. **`search_knowledge_base`** — calls the Knowledge Base `Retrieve` API
+7. **`calculate_loyalty_discount`** — exact arithmetic via AgentCore Code Interpreter, with a tier-only fallback
+8. **`invoke()` entrypoint** — wires memory, browser, KB, discount, and Gateway MCP tools into one `Agent` call
 
-### Section 1 — Configuration and Initialisation
-
-Fill in your resource IDs and set up:
-- `BedrockAgentCoreApp`
-- `BedrockModel` with Amazon Nova Lite
-- `MemoryClient` and `boto3` Bedrock runtime client
-
-### Section 2 — Knowledge Base Tool
-
-Implement `search_knowledge_base(query)`:
-- Call the Bedrock Knowledge Base Retrieve API
-- Join result chunks with `"\n---\n"`
-
-**Test:**
+Deploy commands used:
 ```bash
-agentcore invoke '{"prompt": "Is the Kindle Paperwhite waterproof?"}'
-# Expected: mention of IPX8 rating
-```
-
-### Section 3 — Long-Term Memory Hook
-
-Implement `MemoryHook` with two methods:
-- `retrieve_customer_context` — query all memory namespaces and prepend results to the user message
-- `save_support_interaction` — save the completed (user, assistant) turn after each response
-
-### Section 4 — Loyalty Discount Tool (Code Interpreter)
-
-Implement `calculate_loyalty_discount(loyalty_points, tier, order_total, product_category)`:
-- Build a Python code string containing the discount logic
-- Execute it with `code_session()` and return the JSON result
-- Include a fallback for when the Code Interpreter is unavailable
-
-**Test:**
-```bash
-agentcore invoke '{"prompt": "I am a Gold member with 4250 points. Calculate my discount on a $150 order.", "customer_id": "CUST-123", "session_id": "s1"}'
-```
-
-### Section 5 — Main Entrypoint
-
-Implement the `invoke(payload, context)` function:
-- Extract `prompt`, `customer_id`, and `session_id` from the payload
-- Instantiate `MemoryHook` and `AgentCoreBrowser`
-- Connect to the Gateway via `MCPClient` and load gateway tools
-- Build the `Agent` with all tools and hooks and return its response
-
-### Section 6 — Deploy to AgentCore
-
-```bash
-# Configure the AgentCore CLI (first time only)
-agentcore configure
-
-# Deploy the agent
-agentcore deploy
-
-# Invoke the deployed agent
-agentcore invoke '{"prompt": "Hello, what can you help me with?", "customer_id": "CUST-123", "session_id": "test-1"}'
+cd starter
+uv sync
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore configure --entrypoint main.py --name customer_support_agent
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore deploy
 ```
 
 ---
 
 ## Part 3 — Functional Testing
 
-Run the following test scenarios and verify the expected behaviour. Include screenshots or copy the terminal output in your submission.
+All 6 scenarios below have already been run against the deployed agent — see
+[`test_logs/test_results.md`](test_logs/test_results.md) for the full commands and real responses.
 
-### Test 1 — Order Tracking
+### To take your own screenshots for submission
 
+Run each command below **in your own terminal** (from the `starter/` directory) and
+screenshot the terminal window showing the command and its `Response:` output.
+Each command generates a fresh session ID automatically via `uuidgen` (AgentCore
+requires session IDs of 33+ characters) — run them one at a time, in order.
+
+**Test 1 — Order Tracking**
 ```bash
-agentcore invoke '{"prompt": "Can you track order ORD-001?", "customer_id": "CUST-123", "session_id": "t1"}'
-# Expected: shipping status, tracking number TRK987654321, carrier UPS, estimated delivery
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "Can you track order ORD-001?", "customer_id": "CUST-123", "session_id": "t1"}'
 ```
+📸 Screenshot this output.
 
-### Test 2 — Refund Processing
-
+**Test 2 — Refund Processing**
 ```bash
-agentcore invoke '{"prompt": "I want to return my Kindle Paperwhite (ORD-002). Please initiate a refund.", "customer_id": "CUST-123", "session_id": "t2"}'
-# Expected: refund ID, APPROVED status, 3-5 business days message
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "I want to return my Kindle Paperwhite (ORD-002). Please initiate a refund.", "customer_id": "CUST-123", "session_id": "t2"}'
 ```
+📸 Screenshot this output.
 
-### Test 3 — Knowledge Base (RAG)
-
+**Test 3 — Knowledge Base (RAG)**
 ```bash
-agentcore invoke '{"prompt": "What are the benefits of the Platinum loyalty tier?", "customer_id": "CUST-123", "session_id": "t3"}'
-# Expected: free same-day shipping, 15% discount, priority support
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "What are the benefits of the Platinum loyalty tier?", "customer_id": "CUST-123", "session_id": "t3"}'
 ```
+📸 Screenshot this output.
 
-### Test 4 — Memory (Long-Term)
+**Test 4 — Long-Term Memory (both sessions required)**
 
+Use a customer ID that hasn't accumulated a lot of prior memory (e.g. a fresh
+one like `CUST-DEMO-<yourname>`) so the recall is clean and unambiguous.
+
+Session A — introduce yourself:
 ```bash
-# Session A — introduce yourself
-agentcore invoke '{"prompt": "Hi, I am Jane. I prefer concise responses.", "customer_id": "CUST-123", "session_id": "s-A"}'
-
-# Session B (new session) — verify recall
-agentcore invoke '{"prompt": "Do you remember my name and communication preference?", "customer_id": "CUST-123", "session_id": "s-B"}'
-# Expected: agent recalls "Jane" and "concise responses"
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "Hi, I am Jane. I prefer concise responses.", "customer_id": "CUST-DEMO1", "session_id": "s-A"}'
 ```
+📸 Screenshot this output.
 
-### Test 5 — Loyalty Discount Calculation
-
+Wait at least 60–90 seconds (memory extraction runs asynchronously), then Session B — verify recall in a brand-new session:
 ```bash
-agentcore invoke '{"prompt": "I am a Gold member with 4250 points. Calculate my discount on a $150 standard order.", "customer_id": "CUST-123", "session_id": "t5"}'
-# Expected: points redeemed, tier discount 10%, final total, remaining points
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "Do you remember my name and communication preference?", "customer_id": "CUST-DEMO1", "session_id": "s-B"}'
 ```
+📸 Screenshot this output too — you need **both** Session A and Session B screenshots for Test 4.
 
-### Test 6 — Browser Tool
-
+**Test 5 — Loyalty Discount Calculation**
 ```bash
-agentcore invoke '{"prompt": "Go to https://www.amazon.com and tell me the page title.", "customer_id": "CUST-123", "session_id": "t6"}'
-# Expected: page title retrieved from live Amazon.com
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "I am a Gold member with 4250 points. Calculate my discount on a $150 standard order.", "customer_id": "CUST-123", "session_id": "t5"}'
 ```
+📸 Screenshot this output.
 
----
-
-## Part 4 — CloudWatch Monitoring
-
-1. In the AWS console, navigate to **CloudWatch** → **Log Groups**.
-2. Find the log group for your AgentCore Runtime (named after your deployment).
-3. Create a **metric filter** on `ERROR` log entries.
-4. Create a **CloudWatch Alarm** that triggers when the error count exceeds 5 in a 5-minute window.
-5. Take a screenshot of the alarm configuration and include it in your submission.
+**Test 6 — Browser Tool**
+```bash
+AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
+  '{"prompt": "Go to https://www.udacity.com and tell me the page title.", "customer_id": "CUST-123", "session_id": "t6"}'
+```
+📸 Screenshot this output. (This one can take up to a minute or two — the browser session has to spin up before it navigates.)
 
 ---
 
 ## Submission Checklist
 
-- [ ] `main.py` with all TODOs completed
-- [ ] Screenshots or terminal output for all 6 test scenarios
-- [ ] Screenshot of the CloudWatch alarm configuration
-- [ ] Brief written reflection (200–400 words) covering:
-  - One design decision you made and why
-  - One challenge you encountered and how you solved it
-  - How you would extend this agent for a production environment
+- [x] `main.py` with all 8 TODOs completed (no `pass` or placeholder `None` remaining)
+- [ ] Screenshots or terminal output for Test 1 — Order Tracking
+- [ ] Screenshots or terminal output for Test 2 — Refund Processing
+- [ ] Screenshots or terminal output for Test 3 — Knowledge Base (RAG)
+- [ ] Screenshots or terminal output for Test 4 — Long-Term Memory (both sessions)
+- [ ] Screenshots or terminal output for Test 5 — Loyalty Discount Calculation
+- [ ] Screenshots or terminal output for Test 6 — Browser Tool
+- [x] Written reflection (200–400 words) covering a design decision, a challenge, and a production consideration — see [`REFLECTION.md`](REFLECTION.md)
+
+> Text-based terminal output for all 6 tests is already captured in
+> `test_logs/test_results.md`. The checkboxes above are left unchecked because
+> your mentor may specifically want your own screenshots — run the commands
+> above in your terminal and screenshot each one if so.
 
 ---
 

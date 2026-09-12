@@ -192,14 +192,14 @@ one like `CUST-DEMO-<yourname>`) so the recall is clean and unambiguous.
 Session A — introduce yourself:
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
-  '{"prompt": "Hi, I am Jane. I prefer concise responses.", "customer_id": "CUST-DEMO1", "session_id": "s-A"}'
+  '{"prompt": "Hi, I am Nada Feteiha. I prefer concise responses.", "customer_id": "CUST-DEMO2", "session_id": "s-A"}'
 ```
 📸 Screenshot this output.
 
 Wait at least 60–90 seconds (memory extraction runs asynchronously), then Session B — verify recall in a brand-new session:
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
-  '{"prompt": "Do you remember my name and communication preference?", "customer_id": "CUST-DEMO1", "session_id": "s-B"}'
+  '{"prompt": "Do you remember my name and communication preference?", "customer_id": "CUST-DEMO2", "session_id": "s-B"}'
 ```
 📸 Screenshot this output too — you need **both** Session A and Session B screenshots for Test 4.
 
@@ -222,18 +222,16 @@ AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
 ## Submission Checklist
 
 - [x] `main.py` with all 8 TODOs completed (no `pass` or placeholder `None` remaining)
-- [ ] Screenshots or terminal output for Test 1 — Order Tracking
-- [ ] Screenshots or terminal output for Test 2 — Refund Processing
-- [ ] Screenshots or terminal output for Test 3 — Knowledge Base (RAG)
-- [ ] Screenshots or terminal output for Test 4 — Long-Term Memory (both sessions)
-- [ ] Screenshots or terminal output for Test 5 — Loyalty Discount Calculation
-- [ ] Screenshots or terminal output for Test 6 — Browser Tool
+- [x] Screenshots for Test 1 — Order Tracking — [`test_logs/test1_order_tracking.png`](test_logs/test1_order_tracking.png)
+- [x] Screenshots for Test 2 — Refund Processing — [`test_logs/test2_refund_processing.png`](test_logs/test2_refund_processing.png)
+- [x] Screenshots for Test 3 — Knowledge Base (RAG) — [`test_logs/test3_knowledge_base.png`](test_logs/test3_knowledge_base.png)
+- [x] Screenshots for Test 4 — Long-Term Memory (both sessions) — [`session A`](test_logs/test4a_memory_session_a.png), [`session B`](test_logs/test4b_memory_session_b.png)
+- [x] Screenshots for Test 5 — Loyalty Discount Calculation — [`test_logs/test5_loyalty_discount.png`](test_logs/test5_loyalty_discount.png)
+- [x] Screenshots for Test 6 — Browser Tool — [`test_logs/test6_browser_tool.png`](test_logs/test6_browser_tool.png)
 - [x] Written reflection (200–400 words) covering a design decision, a challenge, and a production consideration — see [`REFLECTION.md`](REFLECTION.md)
 
-> Text-based terminal output for all 6 tests is already captured in
-> `test_logs/test_results.md`. The checkboxes above are left unchecked because
-> your mentor may specifically want your own screenshots — run the commands
-> above in your terminal and screenshot each one if so.
+Text-based terminal output for all 6 tests is also captured in
+`test_logs/test_results.md`, alongside the screenshots above.
 
 ---
 

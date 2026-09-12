@@ -1,0 +1,71 @@
+# Bayfront Grand Hotel — Guest Policy & Amenity Reference
+
+## Room Types
+
+### Standard Room
+Rate: $159/night
+Occupancy: 2 guests
+Amenities: Queen bed, city view, free WiFi, work desk
+Cancellation: Free up to 48 hours before check-in
+
+### Deluxe Room
+Rate: $199/night
+Occupancy: 2-3 guests
+Amenities: King bed, partial ocean view, free WiFi, mini bar, balcony
+Cancellation: Free up to 48 hours before check-in
+
+### Ocean View Suite
+Rate: $289/night
+Occupancy: 4 guests
+Amenities: King bed, separate living area, full ocean view, free WiFi,
+mini bar, balcony, complimentary breakfast
+Cancellation: Free up to 72 hours before check-in
+
+## Cancellation and Refund Policy
+
+### Cancellation Windows
+- Standard and Deluxe rooms: free cancellation up to 48 hours before check-in
+- Ocean View Suite: free cancellation up to 72 hours before check-in
+- Late cancellations are charged one night's rate as a fee
+- No-shows are charged the full reservation total
+
+### Refund Timeline
+- Credit or Debit Card: 3-5 business days
+- Hotel Gift Card: 2-3 hours
+- Bank Account via ACH: up to 10 business days
+
+### How to Cancel a Reservation
+1. Go to My Reservations in your guest account
+2. Select the reservation you want to cancel
+3. Confirm the cancellation and choose a refund method
+
+## Guest Rewards Program
+
+### Tiers
+- Silver: 0 to 999 points
+- Gold: 1000 to 4999 points
+- Platinum: 5000 or more points
+
+### Earning Points
+- Standard and Deluxe rooms: 1 point per $1 spent
+- Ocean View Suite and other premium rooms: 2 points per $1 spent
+- Dining and spa charges: 3 points per $1 spent
+
+### Redeeming Points
+- 100 points equals $1 of stay credit
+- Minimum redemption is 500 points
+- Points are valid for 2 years from the date earned
+
+### Tier Benefits
+- Silver: early check-in when available
+- Gold: free room upgrade when available, 10% discount on stays
+- Platinum: guaranteed late checkout, free breakfast, 15% discount on stays,
+  priority guest support
+
+## Amenities
+
+- Free WiFi throughout the property
+- Rooftop pool and fitness center, open 6am-10pm
+- On-site restaurant and bar
+- Valet parking available for $25/night
+- Pet-friendly rooms available on request (additional cleaning fee applies)

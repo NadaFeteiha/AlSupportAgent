@@ -1,0 +1,59 @@
+[
+  {
+    "name": "initiate_cancellation",
+    "description": "Cancel a hotel reservation and confirm any refund owed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Reason for cancellation"
+        },
+        "refund_amount": {
+          "type": "number",
+          "description": "Refund amount in USD"
+        },
+        "reservation_id": {
+          "type": "string",
+          "description": "Reservation ID to cancel"
+        }
+      },
+      "required": [
+        "reservation_id",
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "check_cancellation_status",
+    "description": "Check the status of an existing cancellation.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "cancellation_id": {
+          "type": "string",
+          "description": "Cancellation ID to check"
+        }
+      },
+      "required": [
+        "cancellation_id"
+      ]
+    }
+  },
+  {
+    "name": "get_cancellation_policy",
+    "description": "Get the cancellation policy window for a reservation.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "reservation_id": {
+          "type": "string",
+          "description": "Reservation ID needing policy info"
+        }
+      },
+      "required": [
+        "reservation_id"
+      ]
+    }
+  }
+]

@@ -52,11 +52,12 @@ The project suggests a few optional additions to go further. I did two of them:
   messages get summarized instead of just dropped or blindly kept, which
   keeps token usage under control.
 
-I skipped the third suggestion (swapping the whole scenario to a different
-domain like healthcare or tutoring) — the 6 required test scenarios are
-specifically written around this e-commerce setup, and I didn't want to risk
-breaking something that's already deployed and verified just to demonstrate
-the same architecture with different tool names.
+I ended up doing the third one too, but as a completely separate deployment
+so it doesn't touch this graded submission: [`hotel_variant/`](hotel_variant/)
+is the same agent re-themed for a hotel (reservations instead of orders,
+cancellations instead of refunds, guest rewards instead of loyalty discount).
+Same architecture, own Lambdas/Gateway/Knowledge Base/Memory/Runtime, own
+test results in [`hotel_variant/TEST_RESULTS.md`](hotel_variant/TEST_RESULTS.md).
 
 ## Project structure
 

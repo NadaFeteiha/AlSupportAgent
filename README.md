@@ -52,12 +52,15 @@ The project suggests a few optional additions to go further. I did two of them:
   messages get summarized instead of just dropped or blindly kept, which
   keeps token usage under control.
 
-I ended up doing the third one too, but as a completely separate deployment
-so it doesn't touch this graded submission: [`hotel_variant/`](hotel_variant/)
-is the same agent re-themed for a hotel (reservations instead of orders,
-cancellations instead of refunds, guest rewards instead of loyalty discount).
-Same architecture, own Lambdas/Gateway/Knowledge Base/Memory/Runtime, own
-test results in [`hotel_variant/TEST_RESULTS.md`](hotel_variant/TEST_RESULTS.md).
+I did the third one too (domain personalization), but kept it as a totally
+separate deployment so it doesn't touch this graded submission at all:
+[`hotel_variant/`](hotel_variant/) is the same agent re-themed for a hotel —
+reservations instead of orders, cancellations instead of refunds, guest
+rewards instead of loyalty discount. Same architecture, own
+Lambdas/Gateway/Knowledge Base/Memory/Runtime, own test results in
+[`hotel_variant/TEST_RESULTS.md`](hotel_variant/TEST_RESULTS.md). While
+testing that one I actually caught something interesting — see the note at
+the bottom of this README.
 
 ## Project structure
 
@@ -68,13 +71,23 @@ project/
 ├── test_logs/
 │   ├── test_results.md
 │   └── test*.png            (screenshots for each test)
-└── starter/
-    ├── main.py               (the completed agent)
+├── starter/                  (the graded submission)
+│   ├── main.py                (the completed agent)
+│   ├── pyproject.toml
+│   ├── product_catalog.txt    (uploaded to S3, synced into the Knowledge Base)
+│   └── lambda/
+│       ├── order_tracker.py
+│       ├── refund_processor.py
+│       └── lambda_schema
+└── hotel_variant/             (bonus: same agent, hotel domain, separate deployment)
+    ├── README.md
+    ├── TEST_RESULTS.md
+    ├── main.py
     ├── pyproject.toml
-    ├── product_catalog.txt   (uploaded to S3, synced into the Knowledge Base)
+    ├── hotel_policies.txt
     └── lambda/
-        ├── order_tracker.py
-        ├── refund_processor.py
+        ├── reservation_tracker.py
+        ├── cancellation_processor.py
         └── lambda_schema
 ```
 
@@ -189,6 +202,12 @@ AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   explicitly, otherwise it sometimes picked an invalid name and just gave up
   after the first error instead of retrying.
 - More detail on both of these is in `REFLECTION.md`.
+- While testing the discount calculation on the hotel variant, one run came
+  back with the wrong final numbers even though I'd already verified the
+  tool itself always computes correctly. A retry on the exact same prompt
+  gave the right answer. Looks like Nova Lite occasionally messes up when
+  turning a correct tool result into a sentence, rather than an actual bug —
+  see `hotel_variant/TEST_RESULTS.md` for the details.
 
 ## References
 

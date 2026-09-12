@@ -1,8 +1,8 @@
-# Hotel Guest Support Agent — Test Results
+# Hotel Agent — Test Results
 
-Domain variant of the e-commerce customer support agent. Same architecture,
-same 6 test scenarios, different data. Deployed as its own separate agent so
-the original e-commerce submission stays untouched.
+Ran the same 6 scenarios from the main project against this hotel-themed
+agent instead, just with hotel data. All commands below were run for real
+against the deployed agent.
 
 Agent ARN: `arn:aws:bedrock-agentcore:us-east-1:092134045103:runtime/hotel_support_agent-1XO7TM4Zzc`
 
@@ -12,8 +12,8 @@ Agent ARN: `arn:aws:bedrock-agentcore:us-east-1:092134045103:runtime/hotel_suppo
 agentcore invoke --session-id <uuid> \
   '{"prompt": "Can you check reservation RES-001?", "customer_id": "GUEST-123", "session_id": "h1"}'
 ```
-Response confirmed: room type (Ocean View Suite), hotel, check-in/out dates,
-nightly rate, total cost.
+Got back the room type (Ocean View Suite), hotel name, check-in/out dates,
+nightly rate, and total. All correct.
 
 ## Test 2 — Cancellation Processing
 
@@ -21,8 +21,10 @@ nightly rate, total cost.
 agentcore invoke --session-id <uuid> \
   '{"prompt": "I need to cancel my Standard Room reservation RES-002 because of a change of plans. Please process the cancellation and refund.", "customer_id": "GUEST-123", "session_id": "h2b"}'
 ```
-Response confirmed: cancellation ID (CXL-HO5YLYYT), processed status, refund
-timeline mentioned ("3-5 business days").
+Got a cancellation ID (CXL-HO5YLYYT), a processed status, and the "3-5
+business days" refund message. On my first try the agent asked me for a
+cancellation reason before doing anything, which is fine, it just meant I
+had to include the reason in the prompt to get it done in one shot.
 
 ## Test 3 — Knowledge Base (RAG)
 
@@ -30,27 +32,30 @@ timeline mentioned ("3-5 business days").
 agentcore invoke --session-id <uuid> \
   '{"prompt": "What are the benefits of the Platinum guest rewards tier?", "customer_id": "GUEST-123", "session_id": "h3"}'
 ```
-Response confirmed: free breakfast, 15% discount on stays, priority guest
-support — all pulled from the Knowledge Base.
+Got free breakfast, 15% discount on stays, and priority guest support, all
+pulled straight from the knowledge base content.
 
 ## Test 4 — Long-Term Memory (two sessions)
 
-Used a fresh guest ID (`GUEST-DEMO1`) so the recall demo isn't muddied by
-earlier test traffic on `GUEST-123`.
+Used a fresh guest ID (`GUEST-DEMO1`) instead of `GUEST-123` for this one, so
+old test memory wouldn't get mixed in with a clean recall demo.
 
 Session A:
 ```
 agentcore invoke --session-id <uuid> \
   '{"prompt": "Hi, I am Nada Feteiha. I prefer concise responses.", "customer_id": "GUEST-DEMO1", "session_id": "h-s-A"}'
 ```
-Response: "Hello Nada! I'll keep my responses concise..."
+"Hello Nada! I'll keep my responses concise..."
 
-Session B (waited for memory extraction, new session, same guest ID):
+Session B (waited about a minute and a half for memory extraction, brand new
+session, same guest ID):
 ```
 agentcore invoke --session-id <uuid> \
   '{"prompt": "Do you remember my name and communication preference?", "customer_id": "GUEST-DEMO1", "session_id": "h-s-B-retry"}'
 ```
-Response: "Yes, Nada Feteiha. I remember you prefer concise responses."
+"Yes, Nada Feteiha. I remember you prefer concise responses." My first
+attempt at session B only waited 80 seconds and came back empty, extraction
+just hadn't finished yet. Waiting longer fixed it.
 
 ## Test 5 — Guest Rewards / Stay Credit Calculation
 
@@ -58,17 +63,16 @@ Response: "Yes, Nada Feteiha. I remember you prefer concise responses."
 agentcore invoke --session-id <uuid> \
   '{"prompt": "I am a Gold member with 4250 points. Calculate my stay credit on a $150 standard room stay.", "customer_id": "GUEST-123", "session_id": "h5-retry"}'
 ```
-Response confirmed exact math: 4,000 points redeemed, 10% tier discount,
-final total $99.00, total savings $51.00, 99 points earned, 349 points
-remaining.
+Got the exact right numbers: 4,000 points redeemed, 10% tier discount, final
+total $99.00, total savings $51.00, 99 points earned, 349 points remaining.
 
-**Note:** the first attempt at this test gave visibly wrong numbers ($95 final
-total instead of $99) even though the tool itself returned the correct
-result — direct testing of `calculate_stay_credit()` and a local run of the
-full agent both produced the correct $99 answer every time, so this looks
-like the model occasionally restating tool numbers incorrectly rather than a
-bug in the tool or the code. A retry on the same prompt gave the exact right
-numbers. See `REFLECTION.md` in the main project for more on this.
+Worth mentioning: my first attempt at this exact prompt came back with wrong
+numbers ($95 final total instead of $99), even though I'd already confirmed
+the tool computes the right answer every time when I call it directly, and a
+full local run of the agent also gave the correct $99. Retrying the same
+prompt on the deployed agent gave the correct numbers. So this looks like the
+model occasionally getting the numbers wrong when it writes up the final
+answer, not a bug in the tool or my code.
 
 ## Test 6 — Browser Tool
 
@@ -76,4 +80,4 @@ numbers. See `REFLECTION.md` in the main project for more on this.
 agentcore invoke --session-id <uuid> \
   '{"prompt": "Go to https://www.udacity.com and tell me the page title.", "customer_id": "GUEST-123", "session_id": "h6"}'
 ```
-Response: "Learn the Latest Tech Skills; Advance Your Career | Udacity"
+"Learn the Latest Tech Skills; Advance Your Career | Udacity" — correct.

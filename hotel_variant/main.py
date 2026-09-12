@@ -57,6 +57,8 @@ memory_client = MemoryClient(region_name=REGION)
 
 _bedrock_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION)
 
+# same reason as the e-commerce version: create this once here, not inside
+# invoke(), or its cleanup code hangs the process on every request
 agent_core_browser = AgentCoreBrowser(region=REGION)
 
 

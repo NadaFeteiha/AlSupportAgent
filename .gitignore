@@ -16,5 +16,6 @@ aws.pdf
 
 # AWS / AgentCore local config & secrets
 .bedrock_agentcore.yaml
+.bedrock_agentcore/
 .env
 *.pem

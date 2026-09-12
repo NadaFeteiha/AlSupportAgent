@@ -85,11 +85,9 @@ memory_client = MemoryClient(region_name=REGION)
 
 _bedrock_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION)
 
-# Created once at module level (not per-request): strands_tools.browser.Browser
-# spins up its own internal event loop and cleans it up in __del__ — creating a
-# fresh instance on every invocation triggers that cleanup right as invoke()
-# returns and can deadlock. A single shared instance avoids the repeated
-# construct/destruct cycle.
+# Note: this has to be created once here, not inside invoke(). If you create a
+# new AgentCoreBrowser on every request, its cleanup code runs right as the
+# request finishes and can hang the whole process. Learned this the hard way.
 agent_core_browser = AgentCoreBrowser(region=REGION)
 
 
@@ -446,13 +444,15 @@ async def invoke(payload, context=None):
             "answer product and policy questions, calculate loyalty discounts, "
             "and browse the web when needed. Always ground factual answers in "
             "tool results rather than guessing.\n\n"
-            "When using the browser tool, always call init_session first with a "
-            "session_name of only lowercase letters, digits, and hyphens (no "
-            "underscores, spaces, or uppercase), between 10 and 36 characters "
-            "long, e.g. 'browser-session-1'. Reuse that exact session_name for "
-            "every subsequent navigate/evaluate action in the same task. If a "
-            "tool call returns a validation error, correct the offending field "
-            "and retry immediately rather than giving up."
+            # The browser tool rejects session names with uppercase letters or
+            # underscores, and the model kept picking those and giving up on
+            # the first error, so I just spelled out the rule here.
+            "When using the browser tool, call init_session first with a "
+            "session_name made only of lowercase letters, digits, and hyphens "
+            "(10-36 characters), like 'browser-session-1'. Reuse that same "
+            "session_name for every navigate/evaluate call after that. If a "
+            "tool call comes back with a validation error, fix it and try "
+            "again instead of giving up."
         )
 
         gateway_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))

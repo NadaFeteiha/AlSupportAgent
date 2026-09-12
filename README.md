@@ -1,147 +1,92 @@
-# Project: Building a Production-Grade Customer Support AI Agent with Amazon Bedrock AgentCore
+# Customer Support AI Agent — Amazon Bedrock AgentCore Project
 
-**Udacity — AWS AI Engineering Nanodegree — Course 2**
+Udacity AWS AI Engineering Nanodegree, Course 2.
 
----
+This is my submission for the customer support agent project. I built and
+deployed the agent described in the project instructions using Amazon Bedrock
+AgentCore, the Strands SDK, and a handful of AWS services (Lambda, API
+Gateway, Bedrock Knowledge Bases, AgentCore Memory, Code Interpreter, and the
+AgentCore Browser tool).
 
-## ✅ Project Status: Complete & Deployed
+Agent ARN: `arn:aws:bedrock-agentcore:us-east-1:092134045103:runtime/customer_support_agent-BVDt7HAJnn`
 
-All 8 TODO sections in `starter/main.py` are implemented, the agent is deployed to
-Amazon Bedrock AgentCore Runtime, and all 6 required test scenarios have been
-verified against the live deployed agent.
+## What it does
 
-- **Agent ARN:** `arn:aws:bedrock-agentcore:us-east-1:092134045103:runtime/customer_support_agent-BVDt7HAJnn`
-- **Test results:** [`test_logs/test_results.md`](test_logs/test_results.md)
-- **Written reflection:** [`REFLECTION.md`](REFLECTION.md)
+- Tracks orders and processes refunds through Lambda functions wired up as
+  Gateway tools (MCP)
+- Answers product/policy questions using a Bedrock Knowledge Base (RAG)
+- Remembers customer name and preferences across separate sessions
+- Calculates loyalty discounts with exact math using the Code Interpreter
+- Can browse a live web page and read back what it finds
 
----
+## Task status
 
-## Overview
+| Task | Done? |
+|---|---|
+| 1. App init + clients (TODO 1-3) | Yes |
+| 2. Namespace helper (TODO 4) | Yes |
+| 3. MemoryHook class (TODO 5) | Yes |
+| 4. Knowledge Base search tool (TODO 6) | Yes |
+| 5. Loyalty discount calculator (TODO 7) | Yes |
+| 6. Agent entrypoint (TODO 8) | Yes |
+| 7. Deploy + run all 6 test scenarios | Yes |
+| 8. Written reflection | Yes |
 
-In this project you will build a fully functional, production-ready AI customer support agent for a fictional Amazon store. Starting from a simple local chatbot, you will progressively add cloud infrastructure, external tool integration, a knowledge base, persistent memory, a code interpreter, and a browser — finishing with a deployable agent that can handle real customer inquiries end-to-end.
+Test results (real command + real output for all 6 scenarios): [`test_logs/test_results.md`](test_logs/test_results.md)
 
-By the end of the project your agent will be able to:
+Reflection: [`REFLECTION.md`](REFLECTION.md)
 
-- Answer questions about products, return policies, and loyalty rewards using Retrieval-Augmented Generation (RAG)
-- Look up order status and process refunds by calling Lambda functions through the AgentCore Gateway
-- Remember customer preferences and conversation history across multiple sessions
-- Calculate exact loyalty discounts using a secure code sandbox
-- Navigate websites to fetch live information
-
----
-
-## Learning Objectives
-
-After completing this project you will be able to:
-
-1. Deploy an AI agent to Amazon Bedrock AgentCore
-2. Wire up external Lambda tools via the AgentCore Gateway using the Model Context Protocol (MCP)
-3. Implement RAG with a Bedrock Knowledge Base
-4. Add short-term (session) and long-term (cross-session) memory using AgentCore Memory
-5. Use the AgentCore Code Interpreter for precise computation
-6. Integrate the AgentCore Browser tool for live web access
-7. Monitor and observe agent behaviour with Amazon CloudWatch
-
----
-
-## Prerequisites
-
-### AWS Account
-
-- An active AWS account with permission to create and manage:
-  - IAM roles and policies
-  - Lambda functions
-  - API Gateway REST APIs
-  - Amazon Bedrock Knowledge Bases (with S3 and OpenSearch access)
-  - Amazon Bedrock AgentCore resources (Runtime, Gateway, Memory)
-  - Amazon CloudWatch
-- All resources should be created in **us-east-1** (N. Virginia) unless stated otherwise.
-
-### Local Development Environment
-
-| Tool | Version |
-|------|---------|
-| Python | 3.14+ |
-| [uv](https://docs.astral.sh/uv/) | Latest |
-| AWS CLI | v2 |
-| AgentCore CLI (`agentcore`) | Installed via the starter-toolkit |
-| Node.js (for MCP Inspector) | 18+ |
-
-### Model Access
-
-Enabled model in the Amazon Bedrock console under **Model access**:
-
-- **Amazon Nova Lite** (`global.amazon.nova-2-lite-v1:0`)
-
----
-
-## Project Structure
+## Project structure
 
 ```
 project/
-├── README.md                ← this file
-├── REFLECTION.md             ← written reflection (design decision, challenge, production)
+├── README.md
+├── REFLECTION.md
 ├── test_logs/
-│   └── test_results.md       ← command + real output for all 6 test scenarios
+│   ├── test_results.md
+│   └── test*.png            (screenshots for each test)
 └── starter/
-    ├── main.py                ← completed agent (all 8 TODOs implemented)
+    ├── main.py               (the completed agent)
     ├── pyproject.toml
-    ├── product_catalog.txt    ← uploaded to S3 / synced into the Knowledge Base
+    ├── product_catalog.txt   (uploaded to S3, synced into the Knowledge Base)
     └── lambda/
-        ├── order_tracker.py     ← deployed as-is to AWS Lambda
-        ├── refund_processor.py  ← deployed as-is to AWS Lambda
-        └── lambda_schema         ← JSON schema used to register refund_processor as a Gateway tool
+        ├── order_tracker.py
+        ├── refund_processor.py
+        └── lambda_schema
 ```
 
----
-
-## Part 1 — AWS Infrastructure (as actually deployed)
+## AWS resources I actually deployed
 
 | Resource | Value |
 |---|---|
 | Region | `us-east-1` |
-| Lambda: order tracking | `order-tracker` |
-| Lambda: refunds | `refund-processor` |
-| API Gateway REST API | `chcb0zkb9b` (stage `prod`) |
-| AgentCore Gateway | `customersupportgateway-zh3m74vmjj` (NONE authorizer, 2 targets: `order-tracker` API Gateway target, `refund-processor` Lambda target — 6 MCP tools total) |
-| Knowledge Base | `CustomerSupportKB` — ID `USCGD9ZEJ1` (Managed embeddings, S3 data source `cs-agent-kb-092134045103-68312`) |
-| AgentCore Memory | `CustomerSupportMemory-L1eStICBN4` (strategies: `customer_facts` (SEMANTIC), `customer_preferences` (USER_PREFERENCE)) |
-| AgentCore Runtime | `customer_support_agent-BVDt7HAJnn` (Direct Code Deploy, Python 3.11) |
+| Lambda (orders) | `order-tracker` |
+| Lambda (refunds) | `refund-processor` |
+| API Gateway REST API | `chcb0zkb9b`, stage `prod` |
+| AgentCore Gateway | `customersupportgateway-zh3m74vmjj`, NONE authorizer, 2 targets (order-tracker API Gateway target + refund-processor Lambda target), 6 MCP tools total |
+| Knowledge Base | `CustomerSupportKB`, ID `USCGD9ZEJ1` |
+| AgentCore Memory | `CustomerSupportMemory-L1eStICBN4`, strategies `customer_facts` (semantic) and `customer_preferences` (user preference) |
+| AgentCore Runtime | `customer_support_agent-BVDt7HAJnn`, Direct Code Deploy, Python 3.11 |
 
-**Verify Gateway tools:**
+Model used: Amazon Nova Lite (`global.amazon.nova-2-lite-v1:0`).
+
+Checking Gateway tools:
 ```bash
 npx @modelcontextprotocol/inspector
-# Connect to the Gateway URL, confirm all 6 tools are listed:
-#   order-tracker___get_order, order-tracker___get_customer_orders,
-#   order-tracker___get_customer, refund-processor___initiate_refund,
-#   refund-processor___check_refund_status, refund-processor___get_return_label
+# connect to the Gateway URL, should list 6 tools
 ```
 
-**Verify Knowledge Base directly:**
+Checking the Knowledge Base directly:
 ```bash
 aws bedrock-agent-runtime retrieve \
   --knowledge-base-id USCGD9ZEJ1 \
   --retrieval-query '{"text": "What is the return policy for electronics?"}' \
   --region us-east-1
-# Expected: mentions the 15-day return window for electronics
+# should mention the 15-day electronics return window
 ```
 
----
+## Local setup / deploy
 
-## Part 2 — The Agent (`starter/main.py`)
-
-All 8 TODOs are implemented:
-
-1. **App init** — `BedrockAgentCoreApp` instance
-2. **Configuration** — `GATEWAY_URL`, `KB_ID`, `REGION`, `MEMORY_ID` (env-var overridable, real values as defaults)
-3. **Model & clients** — `BedrockModel` (Nova Lite), `MemoryClient`, boto3 `bedrock-agent-runtime` client, module-level `AgentCoreBrowser`
-4. **`get_namespaces()`** — maps memory strategy type → namespace template
-5. **`MemoryHook`** — retrieves relevant memories before each turn, saves the (query, response) pair after
-6. **`search_knowledge_base`** — calls the Knowledge Base `Retrieve` API
-7. **`calculate_loyalty_discount`** — exact arithmetic via AgentCore Code Interpreter, with a tier-only fallback
-8. **`invoke()` entrypoint** — wires memory, browser, KB, discount, and Gateway MCP tools into one `Agent` call
-
-Deploy commands used:
 ```bash
 cd starter
 uv sync
@@ -149,93 +94,80 @@ AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore configure --entrypoint main.py --n
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore deploy
 ```
 
----
+## Running the 6 test scenarios yourself
 
-## Part 3 — Functional Testing
-
-All 6 scenarios below have already been run against the deployed agent — see
-[`test_logs/test_results.md`](test_logs/test_results.md) for the full commands and real responses.
-
-### To take your own screenshots for submission
-
-Run each command below **in your own terminal** (from the `starter/` directory) and
-screenshot the terminal window showing the command and its `Response:` output.
-Each command generates a fresh session ID automatically via `uuidgen` (AgentCore
-requires session IDs of 33+ characters) — run them one at a time, in order.
+These commands are copy-pasteable. Run them one at a time from the `starter/`
+folder. `$(uuidgen)` just generates a fresh session id each time — AgentCore
+needs the `--session-id` flag to be at least 33 characters.
 
 **Test 1 — Order Tracking**
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "Can you track order ORD-001?", "customer_id": "CUST-123", "session_id": "t1"}'
 ```
-📸 Screenshot this output.
+![Test 1 output](test_logs/test1_order_tracking.png)
 
 **Test 2 — Refund Processing**
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "I want to return my Kindle Paperwhite (ORD-002). Please initiate a refund.", "customer_id": "CUST-123", "session_id": "t2"}'
 ```
-📸 Screenshot this output.
+![Test 2 output](test_logs/test2_refund_processing.png)
 
 **Test 3 — Knowledge Base (RAG)**
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "What are the benefits of the Platinum loyalty tier?", "customer_id": "CUST-123", "session_id": "t3"}'
 ```
-📸 Screenshot this output.
+![Test 3 output](test_logs/test3_knowledge_base.png)
 
-**Test 4 — Long-Term Memory (both sessions required)**
+**Test 4 — Long-Term Memory (needs two calls, two screenshots)**
 
-Use a customer ID that hasn't accumulated a lot of prior memory (e.g. a fresh
-one like `CUST-DEMO-<yourname>`) so the recall is clean and unambiguous.
-
-Session A — introduce yourself:
+Session A, introduce yourself:
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "Hi, I am Nada Feteiha. I prefer concise responses.", "customer_id": "CUST-DEMO2", "session_id": "s-A"}'
 ```
-📸 Screenshot this output.
+![Test 4 session A output](test_logs/test4a_memory_session_a.png)
 
-Wait at least 60–90 seconds (memory extraction runs asynchronously), then Session B — verify recall in a brand-new session:
+Wait about a minute for memory extraction to run, then Session B (brand new session, same customer_id), to check recall:
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "Do you remember my name and communication preference?", "customer_id": "CUST-DEMO2", "session_id": "s-B"}'
 ```
-📸 Screenshot this output too — you need **both** Session A and Session B screenshots for Test 4.
+![Test 4 session B output](test_logs/test4b_memory_session_b.png)
 
 **Test 5 — Loyalty Discount Calculation**
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "I am a Gold member with 4250 points. Calculate my discount on a $150 standard order.", "customer_id": "CUST-123", "session_id": "t5"}'
 ```
-📸 Screenshot this output.
+![Test 5 output](test_logs/test5_loyalty_discount.png)
 
 **Test 6 — Browser Tool**
 ```bash
 AGENTCORE_SUPPRESS_RECOMMENDATION=1 agentcore invoke --session-id "$(uuidgen)" \
   '{"prompt": "Go to https://www.udacity.com and tell me the page title.", "customer_id": "CUST-123", "session_id": "t6"}'
 ```
-📸 Screenshot this output. (This one can take up to a minute or two — the browser session has to spin up before it navigates.)
+(This one takes a bit longer, the browser session has to spin up first.)
 
----
+![Test 6 output](test_logs/test6_browser_tool.png)
 
-## Submission Checklist
+## Notes / gotchas I ran into
 
-- [x] `main.py` with all 8 TODOs completed (no `pass` or placeholder `None` remaining)
-- [x] Screenshots for Test 1 — Order Tracking — [`test_logs/test1_order_tracking.png`](test_logs/test1_order_tracking.png)
-- [x] Screenshots for Test 2 — Refund Processing — [`test_logs/test2_refund_processing.png`](test_logs/test2_refund_processing.png)
-- [x] Screenshots for Test 3 — Knowledge Base (RAG) — [`test_logs/test3_knowledge_base.png`](test_logs/test3_knowledge_base.png)
-- [x] Screenshots for Test 4 — Long-Term Memory (both sessions) — [`session A`](test_logs/test4a_memory_session_a.png), [`session B`](test_logs/test4b_memory_session_b.png)
-- [x] Screenshots for Test 5 — Loyalty Discount Calculation — [`test_logs/test5_loyalty_discount.png`](test_logs/test5_loyalty_discount.png)
-- [x] Screenshots for Test 6 — Browser Tool — [`test_logs/test6_browser_tool.png`](test_logs/test6_browser_tool.png)
-- [x] Written reflection (200–400 words) covering a design decision, a challenge, and a production consideration — see [`REFLECTION.md`](REFLECTION.md)
+- The AgentCore CLI's own `--session-id` needs to be 33+ characters, otherwise
+  it errors out. I use `uuidgen` for that.
+- If you reuse the same `customer_id` for a lot of testing, the memory system
+  starts injecting older, unrelated facts into new conversations because
+  `retrieve_customer_context` has no relevance threshold. Use a fresh
+  `customer_id` when you want a clean memory demo.
+- The browser tool needs a `session_name` matching `^[a-z0-9-]+$`, 10-36
+  characters. I added a line in the system prompt telling the model this
+  explicitly, otherwise it sometimes picked an invalid name and just gave up
+  after the first error instead of retrying.
+- More detail on both of these is in `REFLECTION.md`.
 
-Text-based terminal output for all 6 tests is also captured in
-`test_logs/test_results.md`, alongside the screenshots above.
-
----
-
-## Helpful References
+## References
 
 - [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html)
 - [Strands Agents Documentation](https://strandsagents.com)

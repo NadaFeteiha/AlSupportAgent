@@ -1,39 +1,35 @@
 # Reflection
 
-**Design decision.** For `calculate_loyalty_discount`, I run the arithmetic
-entirely inside the Code Interpreter sandbox rather than letting the LLM compute
-the discount from a prompt. Loyalty points redeem in blocks of 500, capped at 50%
-of the order total, with a separate tier discount applied afterward — a sequence
-of floor/min operations an LLM can plausibly round or drop a step on.
-Generating a Python code string and executing it via `code_session(...).invoke()`
-guarantees identical input always produces identical output, which matters when
-the number on screen is a real dollar amount. I validated the formula's constants
-against the product catalog itself (retrieved via the Knowledge Base: "100 points
-= $1, minimum redemption 500 points") rather than guessing them.
+**Design decision.** For the loyalty discount tool, I decided to do all the
+math inside the Code Interpreter instead of just asking the model to compute
+it. The discount logic has a few steps — redeem points in blocks of 500, cap
+that at 50% of the order, then apply the tier discount on what's left — and
+that's exactly the kind of multi-step math an LLM can get slightly wrong or
+round differently each time. Writing it as an actual Python string and running
+it through `code_session(...).invoke()` means the same input always gives the
+same output, no matter how the model is feeling that day. I also double
+checked my constants (100 points = $1, 500 point minimum) against the product
+catalog in the Knowledge Base instead of just guessing them.
 
-**Challenge.** The browser tool worked in isolation but appeared to hang forever
-when called from inside the async `invoke()` entrypoint alongside the Gateway's
-MCP client. Using `faulthandler.dump_traceback_later()` to get a live stack trace
-of the "hung" process showed the agent had already produced the correct answer —
-the hang was in `Browser.__del__`, deadlocked in a nested event loop during
-garbage collection. Root cause: I was instantiating a fresh `AgentCoreBrowser`
-per request, and its destructor ran the moment the object went out of scope at
-the end of `invoke()`. Moving the browser to a single module-level instance
-(matching how the model and memory client are initialized) eliminated the
-repeated construct/destruct cycle entirely.
+**Challenge.** The browser tool was the hardest part. It worked fine on its
+own, but when I called it from inside the agent's async entrypoint, the whole
+process just hung with no error. I eventually used `faulthandler` to dump a
+stack trace while it was "stuck" and realized the agent had actually already
+returned the right answer — the hang was happening afterward, in the browser
+tool's cleanup code (`__del__`), which spins up its own event loop. The
+problem was that I was creating a brand new `AgentCoreBrowser` object on every
+single request, so its cleanup was firing right when the request finished.
+Moving it to a single instance created once at module load (same as the model
+and memory client) fixed it completely.
 
-**Extending for production.** Two gaps stood out that I'd close before running
-this for real customers. First, `retrieve_customer_context` pulls the top-k
-memories by embedding similarity with no relevance threshold; once enough
-interactions accumulate for one actor ID, semantically-similar but off-topic
-memories get injected into unrelated prompts and skew responses. I'd add a
-minimum similarity-score cutoff and a job to expire or summarize old records so
-context injection stays scoped to the current turn. Second, AWS calls (Gateway,
-Memory, Knowledge Base) currently fail outright on a single transient error — I
-saw this firsthand when a freshly-attached IAM policy took a minute to
-propagate and identical requests failed then succeeded with no code change. I'd
-wrap these in retry-with-backoff and lean on AgentCore's built-in OpenTelemetry
-spans for tracing, so a transient AWS-side hiccup doesn't surface as a
-customer-facing error. I'd also swap the NONE authorizer for IAM or OAuth before handling real customer
-data, and add CloudWatch alarms on error rate and token spend to catch
-regressions early.
+**Production consideration.** If I were putting this in front of real
+customers, the memory retrieval needs a relevance cutoff. Right now it just
+grabs the top 5 memories by similarity with no minimum score, so after enough
+unrelated conversations pile up for one customer, old irrelevant facts start
+leaking into new answers. I'd add a similarity threshold and probably expire
+old memories after a while. I'd also add retry/backoff around the AWS calls —
+I actually hit this during testing, where a freshly attached IAM policy took
+about a minute to propagate and the exact same request failed and then
+succeeded with zero code changes. Right now that just surfaces as an error to the customer, which isn't great.
+Lastly, the Gateway uses the NONE authorizer, fine for this sandbox but not
+something I'd ship with real customer data behind it.

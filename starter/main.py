@@ -63,10 +63,10 @@ os.environ["BYPASS_TOOL_CONSENT"] = "true"
 # REGION:     your AWS region, e.g. "us-east-1"
 # MEMORY_ID   format: shown in the AgentCore Memory console
 
-GATEWAY_URL = os.environ.get("GATEWAY_URL", "<gateway_url>")   # TODO: Replace with your Gateway URL
-KB_ID       = os.environ.get("KB_ID", "<kbid>")                # TODO: Replace with your Knowledge Base ID
-REGION      = os.environ.get("REGION", "us-east-1")             # TODO: Replace with your AWS region
-MEMORY_ID   = os.environ.get("MEMORY_ID", "<mem_id>")           # TODO: Replace with your Memory ID
+GATEWAY_URL = os.environ.get("GATEWAY_URL", "https://customersupportgateway-zh3m74vmjj.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp")
+KB_ID       = os.environ.get("KB_ID", "USCGD9ZEJ1")
+REGION      = os.environ.get("REGION", "us-east-1")
+MEMORY_ID   = os.environ.get("MEMORY_ID", "CustomerSupportMemory-L1eStICBN4")
 
 
 # ── TODO 3 — Model and Clients ────────────────────────────────────────────────
@@ -84,6 +84,13 @@ model = BedrockModel(model_id=model_id)
 memory_client = MemoryClient(region_name=REGION)
 
 _bedrock_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION)
+
+# Created once at module level (not per-request): strands_tools.browser.Browser
+# spins up its own internal event loop and cleans it up in __del__ — creating a
+# fresh instance on every invocation triggers that cleanup right as invoke()
+# returns and can deadlock. A single shared instance avoids the repeated
+# construct/destruct cycle.
+agent_core_browser = AgentCoreBrowser(region=REGION)
 
 
 # ── TODO 4 — Namespace Helper ─────────────────────────────────────────────────
@@ -431,8 +438,6 @@ async def invoke(payload, context=None):
             memory_client=memory_client,
             memory_id=MEMORY_ID,
         )
-        agent_core_browser = AgentCoreBrowser(region=REGION)
-
         tools = [search_knowledge_base, calculate_loyalty_discount, agent_core_browser.browser]
 
         system_prompt = (

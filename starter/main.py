@@ -445,7 +445,14 @@ async def invoke(payload, context=None):
             "platform. Use the available tools to track orders, process refunds, "
             "answer product and policy questions, calculate loyalty discounts, "
             "and browse the web when needed. Always ground factual answers in "
-            "tool results rather than guessing."
+            "tool results rather than guessing.\n\n"
+            "When using the browser tool, always call init_session first with a "
+            "session_name of only lowercase letters, digits, and hyphens (no "
+            "underscores, spaces, or uppercase), between 10 and 36 characters "
+            "long, e.g. 'browser-session-1'. Reuse that exact session_name for "
+            "every subsequent navigate/evaluate action in the same task. If a "
+            "tool call returns a validation error, correct the offending field "
+            "and retry immediately rather than giving up."
         )
 
         gateway_client = MCPClient(lambda: streamable_http_client(GATEWAY_URL))
